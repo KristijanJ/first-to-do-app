@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import Note from './Note/Note.jsx';
 import NoteForm from './NoteForm/NoteForm.jsx';
+import firebase from './Config/config.js';
+import 'firebase/database';
 import './App.css';
 
 class App extends Component {
@@ -10,23 +11,43 @@ class App extends Component {
   constructor(props){
     super(props);
 
+    this.database = firebase.database().ref().child('notes');
+
     // We're going to setup the React state of our component
     this.state = {
-      notes: [
-        { id: 1, noteContent: "Note 1 here!" },
-        { id: 2, noteContent: "Note 2 here!" },
-      ],
+      notes: [],
     }
   }
 
-  addNote = (note) => {
-    //push the note onto the notes array
+  componentWillMount(){
     const previousNotes = this.state.notes;
-    previousNotes.push({ id: previousNotes.length + 1, noteContent: note });
-    this.setState({
-      notes: previousNotes
+
+    // DataSnapshot
+    this.database.on('child_added', snap => {
+      previousNotes.push({
+        id: snap.key,
+        noteContent: snap.val().noteContent,
+      })
+
+      this.setState({
+        notes: previousNotes,
+      })
     })
-    
+
+    this.database.on('child_removed', snap => {
+      for (let i = 0; i < previousNotes.length; i++) {
+        if (previousNotes[i].id === snap.key) {
+          previousNotes.splice(i, 1);
+        }
+      }
+      this.setState({
+        notes: previousNotes,
+      })
+    })
+  }
+
+  addNote = (note) => {
+    this.database.push().set({ noteContent: note });
   }
 
   render() {
